@@ -23,14 +23,13 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = Comment
-        fields = ['user', 'message', 'timestamp']
+        fields = ['user', 'id', 'message', 'timestamp']
         extra_kwargs = {
             'timestamp': {'read_only': True},
-            'user': {'read_only': True}
         }
 
     def create(self, validated_data):
@@ -43,21 +42,26 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class SnippetSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
-    comment_set = CommentSerializer(many=True)
+    user = UserSerializer(read_only=True)
+    is_starred = serializers.SerializerMethodField()
+    comment_set = CommentSerializer(many=True, read_only=True)
     stargazers_count = serializers.ReadOnlyField()
 
     class Meta:
         model = Snippet
-        fields = ['user', 'uid', 'name', 'description', 'content', 'secret', 'stargazers_count', 'comment_set',
+        fields = ['user', 'uid', 'name', 'description', 'is_starred', 'content', 'secret', 'stargazers_count',
+                  'comment_set',
                   'created_on',
                   'last_updated']
         extra_kwargs = {
-            'user': {'read_only': True},
             'uid': {'read_only': True},
             'created_on': {'read_only': True},
             'last_updated': {'read_only': True}
         }
+
+    def get_is_starred(self, obj: Snippet):
+        return Snippet.objects.filter(uid=obj.uid,
+                                      stargazers__username=self.context.get('request').user.username).exists()
 
     def create(self, validated_data):
         current_user = self.context.get('request').user

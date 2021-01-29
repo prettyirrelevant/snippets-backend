@@ -1,4 +1,5 @@
 from django.contrib.auth import login
+from django.http import Http404
 from knox.views import LoginView as KnoxLoginView
 from rest_framework import status, mixins
 from rest_framework.authtoken.serializers import AuthTokenSerializer
@@ -17,7 +18,7 @@ class SnippetsView(ListCreateAPIView):
     Creates a new snippet
     """
     serializer_class = SnippetSerializer
-    queryset = Snippet.objects.filter(secret=False)
+    queryset = Snippet.objects.filter(secret=False).order_by('-created_on')
 
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -30,13 +31,12 @@ class SnippetsView(ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response({'status': 'success', 'message': 'Snippet created successfully'},
+        return Response({'status': 'success', 'message': 'Snippet created successfully', 'data': serializer.data},
                         status=status.HTTP_201_CREATED, headers=headers)
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        serializer = self.get_serializer()
-        serializer = serializer(queryset, many=True)
+        serializer = self.get_serializer(queryset, many=True)
         return Response({'status': 'success', 'data': serializer.data}, status=status.HTTP_200_OK)
 
 
@@ -53,6 +53,17 @@ class SnippetView(RetrieveUpdateDestroyAPIView):
             return []
         else:
             return [IsAuthenticated(), IsOwner()]
+
+    def get_object(self):
+        obj = super(SnippetView, self).get_object()
+
+        if not obj.secret:
+            return obj
+        else:
+            if self.request.user == obj.user:
+                return obj
+            else:
+                raise Http404
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -106,6 +117,10 @@ class CommentsView(mixins.CreateModelMixin, GenericAPIView):
         context.update({'snippet_uid': snippet_uid})
         return context
 
+    def post(self, *args, **kwargs):
+        response = super(CommentsView, self).create(self.request, *args, **kwargs)
+        return response
+
 
 class CommentView(mixins.UpdateModelMixin, mixins.DestroyModelMixin, GenericAPIView):
     """
@@ -123,8 +138,13 @@ class CommentView(mixins.UpdateModelMixin, mixins.DestroyModelMixin, GenericAPIV
         context.update({'snippet_uid': snippet_uid})
         return context
 
-    def update(self, request, *args, **kwargs):
-        return Response({'status': 'error', 'message': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    def delete(self, *args, **kwargs):
+        response = super(CommentView, self).destroy(self.request, *args, **kwargs)
+        return response
+
+    def put(self, *args, **kwargs):
+        response = super(CommentView, self).partial_update(self.request, *args, **kwargs)
+        return response
 
 
 class UserProfileView(mixins.ListModelMixin, GenericAPIView):
@@ -133,6 +153,7 @@ class UserProfileView(mixins.ListModelMixin, GenericAPIView):
     """
     serializer_class = UserProfileSerializer
     queryset = User.objects.all()
+    lookup_field = "username"
 
     def get_queryset(self):
         if self.request.user.username == self.kwargs.get('username'):
@@ -140,3 +161,35 @@ class UserProfileView(mixins.ListModelMixin, GenericAPIView):
 
         else:
             return User.objects.filter(username=self.kwargs.get('username'), snippet__secret=False)
+
+    def get(self, *args, **kwargs):
+        response = super(UserProfileView, self).list(self.request, *args, **kwargs)
+        return response
+
+
+class StargazersView(GenericAPIView):
+    queryset = Snippet.objects.all()
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'uid'
+
+    def post(self, *args, **kwargs):
+        user = self.request.user
+        snippet: Snippet = self.get_object()
+        if Snippet.objects.filter(uid=snippet.uid, stargazers__username=user.username).exists():
+            return Response({'status': 'error', 'message': 'Snippet already starred'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        snippet.stargazers.add(user)
+        return Response({'status': 'success', 'message': 'Snippet starred successfully'}, status=status.HTTP_200_OK)
+
+    def delete(self, *args, **kwargs):
+        user = self.request.user
+        snippet: Snippet = self.get_object()
+
+        if not Snippet.objects.filter(uid=snippet.uid, stargazers__username=user.username).exists():
+            return Response({'status': 'error', 'message': 'Snippet not starred'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        snippet.stargazers.remove(user)
+        return Response({'status': 'success', 'message': 'Snippet unstarred successfully'},
+                        status=status.HTTP_204_NO_CONTENT)
