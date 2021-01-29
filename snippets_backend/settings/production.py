@@ -12,4 +12,4 @@ SECRET_KEY = env('SECRET_KEY')
 
 DATABASES = {'default': env.db()}
 
-CORS_ALLOWED_ORIGINS = ['https://snippets-app.vercel.app']
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS')
