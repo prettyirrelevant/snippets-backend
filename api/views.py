@@ -178,10 +178,10 @@ class UserProfileView(mixins.RetrieveModelMixin, GenericAPIView):
 
     def get_queryset(self):
         if self.request.user.username == self.kwargs.get("username"):
-            return User.objects.filter(username=self.kwargs.get("username"))
+            return User.objects.get(username=self.kwargs.get("username"))
 
         else:
-            return User.objects.filter(
+            return User.objects.get(
                 username=self.kwargs.get("username"), snippet__secret=False
             )
 
