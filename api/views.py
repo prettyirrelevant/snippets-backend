@@ -177,7 +177,7 @@ class UserProfileView(mixins.RetrieveModelMixin, GenericAPIView):
     lookup_field = "username"
 
     def get_queryset(self):
-        if self.request.user.username == self.kwargs.get("username"):
+        if hasattr(self.request, 'user') and self.request.user.username == self.kwargs.get("username"):
             return User.objects.get(username=self.kwargs.get("username"))
 
         else:
