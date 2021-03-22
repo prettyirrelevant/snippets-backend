@@ -167,7 +167,7 @@ class CommentView(mixins.UpdateModelMixin, mixins.DestroyModelMixin, GenericAPIV
         return response
 
 
-class UserProfileView(mixins.ListModelMixin, GenericAPIView):
+class UserProfileView(mixins.RetrieveModelMixin, GenericAPIView):
     """
     Returns a user profile with snippets created by the user
     """
@@ -185,10 +185,6 @@ class UserProfileView(mixins.ListModelMixin, GenericAPIView):
                 username=self.kwargs.get("username"), snippet__secret=False
             )
 
-    def get(self, *args, **kwargs):
-        response = super(UserProfileView, self).list(self.request, *args, **kwargs)
-        return response
-
 
 class StargazersView(GenericAPIView):
     queryset = Snippet.objects.all()
@@ -199,7 +195,7 @@ class StargazersView(GenericAPIView):
         user = self.request.user
         snippet: Snippet = self.get_object()
         if Snippet.objects.filter(
-            uid=snippet.uid, stargazers__username=user.username
+                uid=snippet.uid, stargazers__username=user.username
         ).exists():
             return Response(
                 {"status": "error", "message": "Snippet already starred"},
@@ -217,7 +213,7 @@ class StargazersView(GenericAPIView):
         snippet: Snippet = self.get_object()
 
         if not Snippet.objects.filter(
-            uid=snippet.uid, stargazers__username=user.username
+                uid=snippet.uid, stargazers__username=user.username
         ).exists():
             return Response(
                 {"status": "error", "message": "Snippet not starred"},
