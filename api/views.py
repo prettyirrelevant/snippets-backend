@@ -6,7 +6,8 @@ from rest_framework.generics import (
     ListCreateAPIView,
     CreateAPIView,
     RetrieveUpdateDestroyAPIView,
-    GenericAPIView, )
+    GenericAPIView,
+)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -178,13 +179,19 @@ class UserSnippets(GenericAPIView):
         queryset = self.get_queryset()
 
         # checks if the authenticated user has authorization to view secret snippets
-        if self.request.user.username == self.kwargs.get('username'):
-            data = queryset.filter(user__username=self.kwargs.get('username'))
+        if self.request.user.username == self.kwargs.get("username"):
+            data = queryset.filter(user__username=self.kwargs.get("username")).order_by(
+                "-created_on"
+            )
         else:
-            data = queryset.filter(user__username=self.kwargs.get('username')).filter(secret=False)
+            data = (
+                queryset.filter(user__username=self.kwargs.get("username"))
+                .filter(secret=False)
+                .order_by("-created_on")
+            )
 
         serializer = self.get_serializer(data, many=True)
-        return Response({'data': serializer.data}, status=status.HTTP_200_OK)
+        return Response({"data": serializer.data}, status=status.HTTP_200_OK)
 
 
 class StargazersView(GenericAPIView):
@@ -196,7 +203,7 @@ class StargazersView(GenericAPIView):
         user = self.request.user
         snippet: Snippet = self.get_object()
         if Snippet.objects.filter(
-                uid=snippet.uid, stargazers__username=user.username
+            uid=snippet.uid, stargazers__username=user.username
         ).exists():
             return Response(
                 {"status": "error", "message": "Snippet already starred"},
@@ -214,7 +221,7 @@ class StargazersView(GenericAPIView):
         snippet: Snippet = self.get_object()
 
         if not Snippet.objects.filter(
-                uid=snippet.uid, stargazers__username=user.username
+            uid=snippet.uid, stargazers__username=user.username
         ).exists():
             return Response(
                 {"status": "error", "message": "Snippet not starred"},
