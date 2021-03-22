@@ -185,6 +185,10 @@ class UserProfileView(mixins.RetrieveModelMixin, GenericAPIView):
                 username=self.kwargs.get("username"), snippet__secret=False
             )
 
+    def get(self, *args, **kwargs):
+        response = super(UserProfileView, self).retrieve(self.request, *args, **kwargs)
+        return response
+
 
 class StargazersView(GenericAPIView):
     queryset = Snippet.objects.all()
