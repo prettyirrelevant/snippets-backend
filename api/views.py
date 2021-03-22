@@ -6,8 +6,7 @@ from rest_framework.generics import (
     ListCreateAPIView,
     CreateAPIView,
     RetrieveUpdateDestroyAPIView,
-    GenericAPIView,
-)
+    GenericAPIView, )
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -17,7 +16,6 @@ from .serializers import (
     SnippetSerializer,
     UserSerializer,
     CommentSerializer,
-    UserProfileSerializer,
 )
 
 
@@ -167,27 +165,26 @@ class CommentView(mixins.UpdateModelMixin, mixins.DestroyModelMixin, GenericAPIV
         return response
 
 
-class UserProfileView(mixins.RetrieveModelMixin, GenericAPIView):
+class UserSnippets(GenericAPIView):
     """
-    Returns a user profile with snippets created by the user
+    Returns all snippets created by the user
     """
 
-    serializer_class = UserProfileSerializer
-    queryset = User.objects.all()
+    serializer_class = SnippetSerializer
+    queryset = Snippet.objects.all()
     lookup_field = "username"
 
-    def get_queryset(self):
-        if hasattr(self.request, 'user') and self.request.user.username == self.kwargs.get("username"):
-            return User.objects.get(username=self.kwargs.get("username"))
-
-        else:
-            return User.objects.get(
-                username=self.kwargs.get("username"), snippet__secret=False
-            )
-
     def get(self, *args, **kwargs):
-        response = super(UserProfileView, self).retrieve(self.request, *args, **kwargs)
-        return response
+        queryset = self.get_queryset()
+
+        # checks if the authenticated user has authorization to view secret snippets
+        if self.request.user.username == self.kwargs.get('username'):
+            data = queryset.filter(user__username=self.kwargs.get('username'))
+        else:
+            data = queryset.filter(user__username=self.kwargs.get('username')).filter(secret=False)
+
+        serializer = self.get_serializer(data, many=True)
+        return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
 
 class StargazersView(GenericAPIView):

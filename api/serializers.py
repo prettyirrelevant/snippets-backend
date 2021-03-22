@@ -71,11 +71,3 @@ class SnippetSerializer(serializers.ModelSerializer):
         snippet = Snippet.objects.create(**validated_data)
         return snippet
 
-
-class UserProfileSerializer(serializers.ModelSerializer):
-    snippet_set = SnippetSerializer(many=True)
-    stargazers_count = serializers.ReadOnlyField()
-
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'profile_picture', 'stargazers_count', 'snippet_set']

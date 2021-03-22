@@ -11,7 +11,7 @@ urlpatterns = [
     path('snippets/<str:uid>/comments/<int:id>', views.CommentView.as_view(), name='update-delete-comment'),
     path('users/register', views.RegistrationView.as_view(), name='register'),
     path('users/login', views.LoginView.as_view(), name='login'),
-    path('users/<str:username>', views.UserProfileView.as_view(), name='profile'),
+    path('users/<str:username>', views.UserSnippets.as_view(), name='profile'),
     path('users/logout', LogoutView.as_view(), name='logout'),
     path('users/logout_all', LogoutAllView.as_view(), name='logout-all')
 ]
